@@ -9,13 +9,13 @@ add_listen_link(df, host, arid, start, duration)
 \arguments{
 \item{df}{A data frame containing information about audio files.}
 
-\item{host}{The hostname (e.g., "example.com") where the audio files are hosted.}
+\item{host}{The hostname (e.g., "data.acousticobservatory.org") where the audio files are hosted.}
 
-\item{arid}{A character vector of acoustic recording IDs.}
+\item{arid}{A character or integer vector of audio recording IDs.}
 
 \item{start}{A numeric vector of start offsets (in seconds) for each audio file.}
 
-\item{duration}{A numeric vector of durations (in seconds) for each audio file.}
+\item{duration}{A single number or numeric vector of durations (in seconds) for each audio file.}
 }
 \value{
 The modified data frame with a new `listen` column containing the listen links.

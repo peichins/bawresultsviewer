@@ -15,6 +15,8 @@ formatResults(
 
 \item{col_map}{A named list specifying the column names in the input data.
 Default: `list(filename = "filename", offset_seconds = "timestamp_s")`.}
+
+\item{random_subset}{To test quickly, supply a number to reduce the computation time}
 }
 \value{
 A tibble with the original data and new columns:
@@ -26,6 +28,10 @@ A tibble with the original data and new columns:
 Extracts site, ARID (audio_recording_id), and timestamp information from
 a filename column in BAW results data. Assumes the filename follows the
 canonical format: `[file_start_timestamp]_[site_name]_[arid].[ext]`.
+}
+\details{
+Generally files analysed from a baw server use a filename containing the start datetime, site and arid. This function assumes the filename column
+contains filenames in this format.
 }
 \examples{
 \dontrun{
