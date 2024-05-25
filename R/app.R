@@ -3,8 +3,8 @@ library(lubridate)
 library(dplyr)       # If primarily using dplyr from tidyverse
 library(plotly)
 library(DT)
-source('./plot_results_helpers.R')
-
+#source('./plot_results_helpers.R')
+options(shiny.reactlog = TRUE)
 
 default_config <- list(
   # where audio is downloaded from
@@ -13,13 +13,50 @@ default_config <- list(
   web_host = "data.acousticobservatory.org",
   # used to stop padding going past end of recording.
   # If unknown leave as a really high number and occasionally the link will error
-  recording_duration_seconds <- 60*60*24,
+  recording_duration_seconds = 60*60*24,
+  clip_duration_seconds = 5,
   # how many of the random species to show when launched
-  initial_num_species = 1
+  initial_num_species = 1,
+  title = 'Bird Observations Over Time'
 )
 
 
-launchServer <- function (data_path) {
+
+#' Launch Shiny Server
+#'
+#' This function launches a Shiny server to serve the Bird Audio Window results viewer.
+#'
+#' @param data_path A string specifying the path to the RDS file containing the classification results data.
+#' @param config A list containing configuration options for the Shiny app (e.g., API and web host URLs, recording duration).
+#'
+#' @return A Shiny application object.
+#'
+#' @examples
+#' \dontrun{
+#' data_path <- system.file("extdata", "minjerribah_birdnet.rds", package = "bawresultsviewer")
+#'
+#' config <- list(
+#'   api_host = "api.acousticobservatory.org",
+#'   web_host = "data.acousticobservatory.org"
+#' )
+#'
+#' launchServer(data_path, config)
+#' }
+#'
+#' @importFrom dplyr anti_join arrange bind_rows distinct filter group_by mutate row_number select summarise slice_max ungroup
+#' @importFrom DT DTOutput renderDT datatable
+#' @importFrom lubridate floor_date ymd_hms
+#' @importFrom magrittr %>%
+#' @importFrom plotly add_trace event_data layout plot_ly plotlyOutput renderPlotly event_register
+#' @importFrom shiny fluidPage mainPanel shinyApp sidebarLayout sidebarPanel selectInput titlePanel uiOutput
+#' @importFrom stringr str_detect
+#' @importFrom stats end start
+#' @importFrom scales brewer_pal
+#' @importFrom utils head modifyList
+
+#'
+#' @export
+launchServer <- function (data_path, config = list(), test_subset = 0.1) {
 
   # make sure the working directory is set to the directory where this file is
   # to deploy, set the account info provided by shinyapp.io:
@@ -29,17 +66,20 @@ launchServer <- function (data_path) {
   # then run
   # rsconnect::deployApp('.')
 
+  # check for json config in working directory
+
+
+
+  config <- getConfig(config)
+
   # Define the UI
   ui <- fluidPage(
-    titlePanel("Minjerribah Bird Call Observations"),
+    titlePanel(config$title),
     sidebarLayout(
       sidebarPanel(
-        uiOutput("comparisonSelector"),
-        uiOutput("confidenceSlider"),
-        uiOutput("nameTypeSelector"),  # Selector for name type
-        uiOutput("speciesSelector"),   # Updated dynamically based on selection
-
-
+        uiOutput("scoreSlider"),
+        uiOutput("speciesSelector"),
+        uiOutput("siteSelector"),
         uiOutput("dateRangePicker"),
         selectInput("intervalInput", "Aggregation Interval:",
                     choices = c("1 hour" = "hour", "1 day" = "day", "1 week" = "week", "1 month" = "month"),
@@ -52,194 +92,224 @@ launchServer <- function (data_path) {
     )
   )
 
+  if (is.character(data)) {
+    data <- readRDS(data_path)
+  }
 
-  # loads all_data into global environment
-  loadData(data_path)
+  if (!is.na(test_subset)) {
+
+    num = round(nrow(data) * test_subset)
+    data <- data %>% slice_sample(n = num)
+  }
 
   # add a row number so we track rows when aggregating
-  all_data <- all_data %>% mutate(row_id = row_number())
+  data <- data %>% mutate(row_id = row_number())
 
-  # precompute whether it's wet or dry for efficiency
-  all_data$is_dry <- str_detect(all_data$site_name, "Dry")
-
-  unique_names <- all_data %>%
-    select(scientific_name, common_name) %>%
+  unique_names <- data %>%
+    select(label) %>%
     distinct()
 
   # Run the application
+
+
+  server <- function(input, output, session) {
+    print(head(data))
+
+    unique_labels <- as.character(unique(data$label))
+    unique_sites <- as.character(unique(data$site))
+
+    output$siteSelector <- renderUI({
+      site_list <- as.list(unique_sites)
+      names(site_list) <- unique_sites
+      selectInput("siteInput", "Select Sites (if none will include all):", choices = site_list, selected = list(), multiple = TRUE)
+    })
+
+
+    output$speciesSelector <- renderUI({
+      label_list <- as.list(unique_labels)
+      names(label_list) <- mapLabel(unique_labels)
+      print(label_list)
+      selected_species <- initialSelectedSpecies(unique_labels)
+      selectInput("speciesInput", "Select Species:", choices = label_list, selected = label_list[selected_species], multiple = TRUE)
+    })
+
+
+
+    # Create dynamic score slider based on available data
+    output$scoreSlider <- renderUI({
+      min_score <- min(data$score, na.rm = TRUE)
+      max_score <- max(data$score, na.rm = TRUE)
+      sliderInput("scoreInput", "Score Range:",
+                  min = min_score,
+                  max = max_score,
+                  value = c(min_score, max_score))
+    })
+
+    # Date range picker setup with constrained selectable dates
+    output$dateRangePicker <- renderUI({
+      min_date <- min(data$timestamp, na.rm = TRUE)
+      max_date <- max(data$timestamp, na.rm = TRUE)
+
+      dateRangeInput("dateInput", "Select Date Range:",
+                     start = min_date,
+                     end = max_date,
+                     min = min_date,
+                     max = max_date)
+    })
+
+    filtered_data <- reactive({
+      req(input$speciesInput, input$scoreInput)  # Ensure necessary inputs are present
+
+      modified_data <- data %>%
+        dplyr::filter(
+               label %in% input$speciesInput,
+               score >= input$scoreInput[1],
+               score <= input$scoreInput[2],
+               timestamp >= input$dateInput[1],
+               timestamp <= input$dateInput[2],
+               if (!is.null(input$siteInput) && length(input$siteInput) > 0) site %in% input$siteInput else TRUE
+        ) %>%
+        mutate(interval = floor_date(timestamp, unit = input$intervalInput))
+
+      print(head(modified_data))
+
+      modified_data <- modified_data %>%
+        group_by(interval, label) %>%
+        summarise(count = n(), .groups = 'drop', row_ids = list(row_id))
+
+      print(paste('nrow data', nrow(data)))
+      print(paste('nrow modified_data', nrow(modified_data)))
+      print(paste('date input 1', input$dateInput[1]))
+      print(paste('date input 2', input$dateInput[2]))
+      print(paste('input sites', input$siteInput))
+
+
+
+      modified_data
+    })
+
+
+
+
+
+    output$timeSeriesPlot <- renderPlotly({
+      df <- req(filtered_data())
+      breaks_info <- determineBreaks(df$interval, input$intervalInput)
+
+      # Print out summaries to debug the subsets
+      print(paste("Total data points:", nrow(df)))
+
+      # Create a dynamic color palette
+      num_labels <- length(unique(df$label))
+      color_palette <- scales::brewer_pal(palette = "Set2")(max(3, num_labels))
+
+
+      p <- plot_ly(source = "plotSource")
+
+      # Define different line styles
+      line_styles <- c("solid", "dash", "dot")
+
+      # Adding traces manually for each combination of species and site type
+      for (label_name in unique(df$label)) {
+          subset_df <- df %>% dplyr::filter(label == label_name)
+          line_style <- "solid"
+          p <- p %>% add_trace(data = subset_df,
+                               x = ~interval, y = ~count,
+                               type = 'scatter', mode = 'lines',
+                               line = list(dash = line_style, width = 2),
+                               color = ~label,
+                               colors = color_palette,
+                               name = ~label,
+                               text = ~paste(label, format(interval, "%Y-%m-%d %H:%M:%S"), "with", count, "detections"),
+                               hoverinfo = 'text',
+                               customdata = ~row_ids)
+      }
+
+      p <- p %>% layout(
+        xaxis = list(title = 'Date'),
+        yaxis = list(title = 'Count'),
+        hovermode = 'closest',
+        legend = list(title = list(text = 'Species')),
+        showlegend = TRUE
+      ) %>%
+        layout(
+          hoverlabel = list(bgcolor = "white",
+                            font = list(family = "Arial", size = 12, color = "black"))
+        )
+
+      p <- p %>% event_register("plotly_click")  # Register the plotly_click event
+
+      return(p)
+    })
+
+
+
+    output$detailsTable <- renderDT({
+      click_data <- event_data("plotly_click", source = "plotSource")
+      if (!is.null(click_data) && !is.null(click_data$customdata)) {
+        # Retrieve original rows based on row IDs stored in customdata of the clicked point
+        row_ids <- unlist(click_data$customdata)
+        original_data <- data %>%
+          dplyr::filter(row_id %in% row_ids) %>%
+          mutate(
+            listen = sprintf(
+              '<a href="https://%s/listen/%s?start=%s&end=%s" target="_blank">Listen</a>',
+              config$web_host, arid, pmax(0, offset_seconds - 1),
+              pmin(config$recording_duration_seconds, offset_seconds + 1 + config$clip_duration_seconds)),
+            download = sprintf(
+              '<a href="https://%s/audio_recordings/%s/media.wav?start_offset=%s&end_offset=%s" target="_blank">Download</a>',
+              config$api_host, arid, offset_seconds, offset_seconds + config$clip_duration_seconds),
+            species = mapLabel(label),
+            date = timestamp  # Assuming 'timestamp' is the datetime column from 'data'
+          ) %>%
+          select(species, site, date, score, listen, download)  # Select relevant columns for display
+
+        print(head(original_data))
+
+        datatable(original_data, options = list(pageLength = 5), escape = FALSE)  # 'escape = FALSE' allows HTML rendering of URLs
+      } else {
+        datatable(data.frame(), options = list(pageLength = 5))
+      }
+    })
+
+
+  }
+
+
   shinyApp(ui = ui, server = server)
 
-}
-
-
-server <- function(input, output, session) {
-
-  print(head(all_data))
-
-
-  # Allow user to choose between displaying scientific or common names
-  output$nameTypeSelector <- renderUI({
-    radioButtons("nameType", "Display Name Type:",
-                 choices = c("Scientific Name", "Common Name"),
-                 selected = "Common Name")
-  })
-
-  # UI for choosing comparison mode
-  output$comparisonSelector <- renderUI({
-    radioButtons("comparisonType", "Comparison Type:",
-                 choices = c("All points", "Wet vs Dry"),
-                 selected = "All points")
-  })
-
-
-  # Dynamic species selector based on name type choice
-  output$speciesSelector <- renderUI({
-    req(input$nameType)
-    values <- as.list(unique_names$scientific_name)
-    if (input$nameType == "Scientific Name") {
-      names(values) <- unique_names$scientific_name
-    } else {
-      names(values) <- unique_names$common_name
-    }
-    # Choose random species, or fewer if less than 3 are available
-    selected_species <- sample(seq_along(values), min(initial_num_species, length(values)))
-    selectInput("speciesInput", "Select Species:", choices = values, selected = values[selected_species], multiple = TRUE)
-  })
-
-
-
-  # Create dynamic confidence slider based on available data
-  output$confidenceSlider <- renderUI({
-    min_confidence <- min(all_data$confidence, na.rm = TRUE)
-    sliderInput("confidenceInput", "Confidence Level:",
-                min = min_confidence, max = 1, value = min_confidence)
-  })
-
-  # Date range picker setup with constrained selectable dates
-  output$dateRangePicker <- renderUI({
-    min_date <- min(all_data$start_date, na.rm = TRUE)
-    max_date <- max(all_data$start_date, na.rm = TRUE)
-
-    dateRangeInput("dateInput", "Select Date Range:",
-                   start = min_date,
-                   end = max_date,
-                   min = min_date,
-                   max = max_date)
-  })
-
-  filtered_data <- reactive({
-    req(input$speciesInput, input$confidenceInput)  # Ensure necessary inputs are present
-
-    # Prepare the data with a universal 'site_type' column
-    data <- all_data %>%
-      filter(scientific_name %in% input$speciesInput,
-             confidence >= input$confidenceInput,
-             start_date >= input$dateInput[1],
-             start_date <= input$dateInput[2]) %>%
-      mutate(interval = floor_date(start_date, unit = input$intervalInput),
-             species = case_when(
-               input$nameType == "Scientific Name" ~ scientific_name,
-               TRUE ~ common_name
-             ),
-             site_type = case_when(
-               input$comparisonType == "Wet vs Dry" & !is_dry ~ "Wet",
-               input$comparisonType == "Wet vs Dry" & is_dry ~ "Dry",
-               TRUE ~ "All"  # Default to 'All' if 'Wet vs Dry' is not selected
-             )) %>%
-      group_by(interval, site_type, species) %>%
-      summarise(count = n(), .groups = 'drop', row_ids = list(row_id))
-
-    data
-  })
-
-
-
-
-
-  output$timeSeriesPlot <- renderPlotly({
-    df <- req(filtered_data())
-    breaks_info <- determineBreaks(df$interval, input$intervalInput)
-
-    # Print out summaries to debug the subsets
-    print(paste("Total data points:", nrow(df)))
-    print(table(df$site_type))
-
-    # Create a dynamic color palette
-    num_species <- length(unique(df$species))
-    color_palette <- scales::brewer_pal(palette = "Set2")(max(3, num_species))
-
-
-    p <- plot_ly(source = "plotSource")
-
-    # Define different line styles
-    line_styles <- c("solid", "dash", "dot")
-
-    # Adding traces manually for each combination of species and site type
-    for (species_name in unique(df$species)) {
-      for (cur_site_type in unique(df$site_type)) {
-        subset_df <- df %>% filter(species == species_name, site_type == cur_site_type)
-        line_style <- ifelse(cur_site_type == "Wet", "dash", ifelse(cur_site_type == "Dry", "dot", "solid"))
-
-        p <- p %>% add_trace(data = subset_df,
-                             x = ~interval, y = ~count,
-                             type = 'scatter', mode = 'lines',
-                             line = list(dash = line_style, width = 2),
-                             color = ~species,
-                             colors = color_palette,
-                             name = paste(species_name, cur_site_type),
-                             text = ~paste(species, format(interval, "%Y-%m-%d %H:%M:%S"), "with", count, "detections"),
-                             hoverinfo = 'text',
-                             customdata = ~row_ids)
-      }
-    }
-
-    p <- p %>% layout(
-      title = 'Minjerribah Bird Observations Over Time',
-      xaxis = list(title = 'Date'),
-      yaxis = list(title = 'Count'),
-      hovermode = 'closest',
-      legend = list(title = list(text = 'Species')),
-      showlegend = TRUE
-    ) %>%
-      layout(
-        hoverlabel = list(bgcolor = "white",
-                          font = list(family = "Arial", size = 12, color = "black"))
-      )
-
-    return(p)
-  })
-
-
-
-  output$detailsTable <- renderDT({
-    click_data <- event_data("plotly_click", source = "plotSource")
-    if (!is.null(click_data) && !is.null(click_data$customdata)) {
-      # Retrieve original rows based on row IDs stored in customdata of the clicked point
-      row_ids <- unlist(click_data$customdata)
-      original_data <- all_data %>%
-        filter(row_id %in% row_ids) %>%
-        mutate(
-          listen = sprintf('<a href="https://%s/listen/%s?start=%s&end=%s" target="_blank">Listen</a>', web_host, arid, pmax(0, start - 1), pmin(recording_duration_seconds, end + 1)),
-          download = sprintf('<a href="https://%s/audio_recordings/%s/media.wav?start_offset=%s&end_offset=%s" target="_blank">Download</a>', api_host, arid, start, end),
-          species = if (input$nameType == "Scientific Name") scientific_name else common_name,
-          score = confidence,
-          date = start_date  # Assuming 'start_date' is the datetime column from 'all_data'
-        ) %>%
-        select(species, date, score, listen, download)  # Select relevant columns for display
-
-      print(head(original_data))
-
-      datatable(original_data, options = list(pageLength = 5), escape = FALSE)  # 'escape = FALSE' allows HTML rendering of URLs
-    } else {
-      datatable(data.frame(), options = list(pageLength = 5))
-    }
-  })
 
 
 }
 
 
 
+#todo: map a label to something like a species name for display
+mapLabel <- function (label) {
+  return(label)
+}
 
+initialSelectedSpecies <- function (label_list, initial_num_species = 3, show_all_if_under = 8) {
+  if (length(label_list) < show_all_if_under) {
+    seq_along(label_list)
+  } else {
+    sample(seq_along(label_list), min(initial_num_species, length(values)))
+  }
+}
+
+
+getConfig <- function(config1 = list()) {
+  config <- modifyList(default_config, list())
+
+  if (file.exists("config.json")) {
+    # Read JSON file into a list
+    config2 <- fromJSON("config.json")
+    cat("Loaded config.json successfully!\n")
+    config <- modifyList(config, config2)
+  }
+
+  config <- modifyList(config, config1)
+  return(config)
+}
 
 
