@@ -35,7 +35,8 @@ library(DT)
 #' @importFrom lubridate floor_date ymd_hms
 #' @importFrom magrittr %>%
 #' @importFrom plotly add_trace event_data layout plot_ly plotlyOutput renderPlotly event_register
-#' @importFrom shiny fluidPage mainPanel shinyApp sidebarLayout sidebarPanel selectInput textOutput titlePanel uiOutput
+#' @importFrom shiny conditionalPanel div fluidPage mainPanel shinyApp sidebarLayout sidebarPanel selectInput tags textOutput titlePanel uiOutput
+#' @importFrom shinyauthr loginServer logoutServer
 #' @importFrom stringr str_detect
 #' @importFrom stats end start
 #' @importFrom scales brewer_pal
@@ -43,14 +44,11 @@ library(DT)
 
 #'
 #' @export
-launchServer <- function (data_path, config = list(), test_subset = NA) {
+launchServer <- function (data, config = list(), test_subset = NA) {
 
-  config <- getConfig(config)
-
-  ui <- getUI()
 
   if (is.character(data)) {
-    data <- readRDS(data_path)
+    data <- readRDS(data)
   }
 
   if (!is.na(test_subset)) {
@@ -62,9 +60,8 @@ launchServer <- function (data_path, config = list(), test_subset = NA) {
   # add a row number so we track rows when aggregating
   data <- data %>% mutate(row_id = row_number())
 
-  unique_names <- data %>%
-    select(label) %>%
-    distinct()
+  config <- getConfig(config)
+  ui <- getUI(config)
 
   # Run the application
   server <- getServer(data, config)
@@ -72,6 +69,9 @@ launchServer <- function (data_path, config = list(), test_subset = NA) {
   shinyApp(ui = ui, server = server)
 
 }
+
+
+
 
 
 

@@ -23,9 +23,24 @@ default_config <- list(
 
   # too many points causes the scatter plot to load very slowly, so
   # take a random subset of this size if the number of points exceeds it
-  max_scatter_points = 2000
+  max_scatter_points = 2000,
+
+  auth = FALSE
 )
 
+preprocessConfig <- function (config) {
+
+  if (is.character(config$auth)) {
+    config$require_auth <- TRUE
+  } else if (is.logical(config$auth) && !config$auth) {
+    config$require_auth <- FALSE
+  } else {
+    stop("Invalid value for config$auth. It should be a filepath to an RDS file or FALSE.")
+  }
+
+  return(config)
+
+}
 
 getConfig <- function(config1 = list()) {
   config <- modifyList(default_config, list())
@@ -38,5 +53,5 @@ getConfig <- function(config1 = list()) {
   }
 
   config <- modifyList(config, config1)
-  return(config)
+  return(preprocessConfig(config))
 }

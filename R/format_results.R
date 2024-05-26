@@ -50,8 +50,7 @@ formatResults <- function(source, col_map = list(filename = "filename", offset_s
   data <- data %>%  mutate(utc_offset = stringr::str_extract(file_start_timestamp, "Z|[+-]\\d{4}"))
   data <- data %>%  mutate(file_start_timestamp = stringr::str_extract(file_start_timestamp, "^\\d{8}T\\d{6}"))
   data <- data %>%  mutate(timestamp = lubridate::ymd_hms(file_start_timestamp) + lubridate::seconds(offset_seconds))
-  data <- data %>%  select(-file_start_timestamp)
-
+  data <- data %>%  select(-file_start_timestamp) %>% select(-filename)
 
   return(data)
 }

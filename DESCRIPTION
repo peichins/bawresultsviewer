@@ -1,14 +1,16 @@
 Package: bawresultsviewer
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Explore Species Recognizer Results
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Author: Phil Eichinski
+Maintainer: The package maintainer <philip.eichinski@qut.edu.au>
+Description: Displays outputs of species recognizers run over BAW audio in time-series plots.
+    Allows filtering of detections based on time range, sites, labels. Shows counts within
+    a given time interval over time to see call-density trends. Allows links back to a BAW instance to view
+    and listen to detections. 
 License: Apache License (== 2.0)
 Encoding: UTF-8
 LazyData: true
 Imports:
-    shiny, dplyr, DT, plotly, magrittr, lubridate, scales, stringr, readr
+    shiny, dplyr, DT, plotly, magrittr, lubridate, scales, stringr, readr, shinyauthr
 RoxygenNote: 7.2.3
