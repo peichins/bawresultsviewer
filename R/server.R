@@ -65,7 +65,7 @@ getServer <- function(data, config) {
       if (input$mode == 'counts') {
         modified_data <- modified_data %>%
           group_by(interval, label) %>%
-          summarise(count = n(), .groups = 'drop', row_ids = list(row_id))
+          summarise(count = dplyr::n(), .groups = 'drop', row_ids = list(row_id))
       }
 
       modified_data

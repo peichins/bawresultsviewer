@@ -4,12 +4,12 @@
 \alias{launchServer}
 \title{Launch Shiny Server}
 \usage{
-launchServer(data_path, config = list(), test_subset = NA)
+launchServer(data, config = list(), test_subset = NA)
 }
 \arguments{
-\item{data_path}{A string specifying the path to the RDS file containing the classification results data.}
-
 \item{config}{A list containing configuration options for the Shiny app (e.g., API and web host URLs, recording duration).}
+
+\item{data_path}{A string specifying the path to the RDS file containing the classification results data.}
 }
 \value{
 A Shiny application object.
