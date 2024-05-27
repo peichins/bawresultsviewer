@@ -12,7 +12,7 @@ getServer <- function(data, config) {
     unique_sites <- sort(as.character(unique(data$site)))
 
     output$modeRadio <- renderUI({
-      radioButtons("mode", "Mode:", choices = c("Counts" = "counts", "Scatter" = "scatter"), selected = "counts")
+      radioButtons("mode", "Mode:", choices = c("Counts" = "counts", "Scatter" = "scatter"), selected = "counts", inline = TRUE)
     })
 
     output$siteSelector <- renderUI({
@@ -48,6 +48,32 @@ getServer <- function(data, config) {
                      max = max_date)
     })
 
+    observeEvent(input$mode, {
+      if (input$mode == "counts") {
+        shinyjs::disable("onlyHighestCheckbox")
+      } else {
+        shinyjs::enable("onlyHighestCheckbox")
+      }
+    })
+
+
+    point_clicked <- reactiveVal(FALSE)
+    observeEvent(event_data("plotly_click", source = "plotSource"), {
+      print('plotly click observed')
+      point_clicked(TRUE)
+      })
+
+    observeEvent(input$resetTableButton, {point_clicked(FALSE)})
+
+    message_parts <- c()
+    putMessage <- function (msg, clear = FALSE) {
+      if (clear) message_parts <<- c()
+      message_parts <<- c(message_parts, msg)
+      message <- paste(message_parts, collapse = '. ')
+      output$messageBox <- renderText(message)
+    }
+
+
     filtered_data <- reactive({
       req(input$speciesInput, input$scoreInput)
 
@@ -57,31 +83,72 @@ getServer <- function(data, config) {
           score >= input$scoreInput[1],
           score <= input$scoreInput[2],
           timestamp >= input$dateInput[1],
-          timestamp <= input$dateInput[2],
+          timestamp <= input$dateInput[2] + lubridate::days(1),
           if (!is.null(input$siteInput) && length(input$siteInput) > 0) site %in% input$siteInput else TRUE
         )
 
-      if (input$mode == 'counts') {
-        modified_data <- getCounts(modified_data, input$intervalInput, input$speciesInput)
+      putMessage(paste(nrow(modified_data), 'of', nrow(data), 'fit critera'), TRUE)
+
+
+      if (input$mode == "scatter" && input$onlyHighestCheckbox) {
+        # Filter for top scoring row per species per interval per site
+        modified_data <- modified_data %>%
+          mutate(interval = floor_date(timestamp, unit = input$intervalInput)) %>%
+          group_by(interval, label, site) %>%
+          slice_max(score, n = 1, with_ties = FALSE) %>%
+          ungroup() %>%
+          select(-interval)
+
+        putMessage(paste('Of these, showing only the highest scoring per', input$intervalInput, 'per site, per class', paste0('(',nrow(modified_data),' points)')))
+
       }
 
-      modified_data %>% arrange(timestamp, label)
+      modified_data %>%
+        mutate(row_id = row_number()) %>%
+        arrange(timestamp, label)
+    })
+
+    aggregated_data <- reactive({
+
+      df <- req(filtered_data())
+
+      modified_data <- getCounts(df, input$intervalInput, input$speciesInput)
+
+      putMessage(paste(
+        'Aggregated into', length(unique(modified_data$timestamp)),
+        paste0('one-', input$intervalInput), 'time intervals'
+      ))
+
+      modified_data
+
     })
 
 
+
+
     output$timeSeriesPlot <- renderPlotly({
-      df <- req(filtered_data())
+
       plot_type <- input$mode
       if(plot_type == 'counts') {
+        df <- req(aggregated_data())
         p <- getDetectionCountPlot(df, input, output)
       } else {
-        p <- getDetectionScatterPlot(df, input, output, config$max_scatter_points)
+        df <- req(filtered_data())
+        max_detections = 2000
+        if (nrow(df) > config$max_scatter_points) {
+          putMessage(paste("Too many points to plot, selecting", config$max_scatter_points, "of", nrow(df), "at random"))
+          df <- df %>% slice_sample(n = config$max_scatter_points)
+        }
+        p <- getDetectionScatterPlot(df, input, output)
       }
 
       return(p)
     })
 
-    output$detailsTable <- renderDT(getDetailsTable(data, config))
+    output$detailsTable <- renderDT({
+      df <- req(filtered_data())
+      getDetailsTable(df, config, output, point_clicked)
+    })
 
   }
 }

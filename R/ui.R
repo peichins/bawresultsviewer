@@ -11,6 +11,7 @@ getUI <- function (config) {
 
 
   fluidPage(
+    shinyjs::useShinyjs(),
     titlePanel(config$title),
     sidebarLayout(
       sidebarPanel(
@@ -18,6 +19,7 @@ getUI <- function (config) {
         conditionalPanel(
           condition = "output.is_authorized",
           uiOutput("modeRadio"),
+          checkboxInput("onlyHighestCheckbox", "Show only higest scoring", value = FALSE),
           uiOutput("scoreSlider"),
           uiOutput("speciesSelector"),
           uiOutput("siteSelector"),
@@ -25,7 +27,8 @@ getUI <- function (config) {
           selectInput("intervalInput", "Aggregation Interval:",
                       choices = c("1 hour" = "hour", "1 day" = "day", "1 week" = "week", "1 month" = "month"),
                       selected = "day"),
-          textOutput("messageBox")
+          textOutput("messageBox"),
+          uiOutput("resetTableButton")
         )
       ),
       mainPanel(

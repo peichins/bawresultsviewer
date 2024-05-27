@@ -1,13 +1,4 @@
-getDetectionScatterPlot <- function (df, input, output, max_detections = 2000) {
-
-  if (nrow(df) > max_detections) {
-    message <- paste("Too many points to plot, selecting", max_detections, "of", nrow(df), "at random")
-    print(message)
-    output$messageBox <- renderText(message)
-    df <- df %>% slice_sample(n = max_detections)
-  } else {
-    output$messageBox <- renderText("")
-  }
+getDetectionScatterPlot <- function (df, input, output) {
 
   # Print out summaries to debug the subsets
   print(paste("Total data points:", nrow(df)))

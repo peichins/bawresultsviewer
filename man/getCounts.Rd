@@ -4,7 +4,7 @@
 \alias{getCounts}
 \title{Get Counts of Time-Series Data}
 \usage{
-getCounts(data, interval)
+getCounts(data, interval, labels = NULL)
 }
 \arguments{
 \item{data}{A tibble containing time-series data. Must include columns:

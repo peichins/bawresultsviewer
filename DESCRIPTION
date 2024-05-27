@@ -12,5 +12,5 @@ License: Apache License (== 2.0)
 Encoding: UTF-8
 LazyData: true
 Imports:
-    shiny, dplyr, DT, plotly, magrittr, lubridate, scales, stringr, readr, shinyauthr, tidyr
+    shiny, dplyr, DT, plotly, magrittr, lubridate, scales, stringr, readr, shinyauthr, tidyr, shinyjs
 RoxygenNote: 7.2.3

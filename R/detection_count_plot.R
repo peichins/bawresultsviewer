@@ -1,7 +1,5 @@
 getDetectionCountPlot <- function (df, input, output) {
 
-  output$messageBox <- renderText("")
-
   breaks_info <- determineBreaks(df$timestamp, input$intervalInput)
 
   # Create a dynamic color palette
