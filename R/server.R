@@ -8,8 +8,8 @@ getServer <- function(data, config) {
     output$is_authorized <- reactive({ auth_info$is_authorized() })
     outputOptions(output, "is_authorized", suspendWhenHidden = FALSE)
 
-    unique_labels <- as.character(unique(data$label))
-    unique_sites <- as.character(unique(data$site))
+    unique_labels <- sort(as.character(unique(data$label)))
+    unique_sites <- sort(as.character(unique(data$site)))
 
     output$modeRadio <- renderUI({
       radioButtons("mode", "Mode:", choices = c("Counts" = "counts", "Scatter" = "scatter"), selected = "counts")
@@ -59,16 +59,13 @@ getServer <- function(data, config) {
           timestamp >= input$dateInput[1],
           timestamp <= input$dateInput[2],
           if (!is.null(input$siteInput) && length(input$siteInput) > 0) site %in% input$siteInput else TRUE
-        ) %>%
-        mutate(interval = floor_date(timestamp, unit = input$intervalInput))
+        )
 
       if (input$mode == 'counts') {
-        modified_data <- modified_data %>%
-          group_by(interval, label) %>%
-          summarise(count = dplyr::n(), .groups = 'drop', row_ids = list(row_id))
+        modified_data <- getCounts(modified_data, input$intervalInput, input$speciesInput)
       }
 
-      modified_data
+      modified_data %>% arrange(timestamp, label)
     })
 
 
@@ -87,4 +84,55 @@ getServer <- function(data, config) {
     output$detailsTable <- renderDT(getDetailsTable(data, config))
 
   }
+}
+
+
+#' Get Counts of Time-Series Data
+#'
+#' This function processes time-series data to generate counts of occurrences
+#' within specified time intervals. It also ensures that all combinations of
+#' intervals and labels are included in the result, filling in zeros where data
+#' is missing.
+#'
+#' @param data A tibble containing time-series data. Must include columns:
+#'        `timestamp`, `label`, and `row_id`.
+#' @param interval A string representing the unit for floor_date (e.g., "day",
+#'        "hour", "minute").
+#' @return A tibble with counts for each combination of interval and label.
+#' @importFrom dplyr mutate group_by summarise left_join n
+#' @importFrom tidyr crossing replace_na
+#' @importFrom lubridate floor_date
+#' @importFrom stats setNames
+#' @export
+getCounts <- function (data, interval, labels=NULL) {
+
+  modified_data <- data %>%
+    mutate(interval = floor_date(timestamp, unit = interval)) %>%
+    group_by(interval, label) %>%
+    summarise(count = dplyr::n(), .groups = 'drop', row_ids = list(row_id)) %>%
+    droplevels() %>%
+    rename(timestamp = interval)
+
+  if (is.null(labels)) {
+    labels <- unique(modified_data$label)
+  }
+
+  all_period_timestamps <- crossing(
+    timestamp = seq.POSIXt(
+      from = min(modified_data$timestamp),
+      to = max(modified_data$timestamp),
+      by = interval
+    ),
+    label = labels
+  )
+
+  completed_data <- all_period_timestamps %>%
+    left_join(modified_data, by = c("timestamp", "label")) %>%
+    mutate(
+      count = replace_na(count, 0),
+      row_ids = replace_na(row_ids, list(integer(0)))
+    )
+
+  return(completed_data)
+
 }

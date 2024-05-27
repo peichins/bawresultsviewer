@@ -30,7 +30,7 @@ library(DT)
 #' launchServer(data_path, config)
 #' }
 #'
-#' @importFrom dplyr anti_join arrange bind_rows distinct filter group_by mutate row_number select summarise slice_max slice_sample ungroup
+#' @importFrom dplyr anti_join arrange bind_rows distinct filter group_by left_join mutate row_number select summarise slice_max slice_sample ungroup
 #' @importFrom DT DTOutput renderDT datatable
 #' @importFrom lubridate floor_date ymd_hms
 #' @importFrom magrittr %>%
@@ -40,6 +40,7 @@ library(DT)
 #' @importFrom stringr str_detect
 #' @importFrom stats end start
 #' @importFrom scales brewer_pal
+#' @importFrom tidyr complete
 #' @importFrom utils head modifyList
 
 #'
