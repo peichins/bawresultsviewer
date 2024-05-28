@@ -20,7 +20,6 @@ getUI <- function (data, config) {
   auth_panel <- div()
   if (config$require_auth) {
     auth_panel <- div(
-      div(class = "pull-right", shinyauthr::logoutUI(id = "logout")),
       shinyauthr::loginUI(id = "login")
     )
   }
