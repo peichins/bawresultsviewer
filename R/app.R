@@ -35,7 +35,7 @@ library(DT)
 #' @importFrom lubridate days floor_date ymd_hms
 #' @importFrom magrittr %>%
 #' @importFrom plotly add_trace event_data layout plot_ly plotlyOutput renderPlotly event_register
-#' @importFrom shiny actionButton conditionalPanel div fluidPage checkboxInput mainPanel observeEvent shinyApp sidebarLayout sidebarPanel selectInput tags textOutput titlePanel uiOutput
+#' @importFrom shiny actionButton conditionalPanel div fluidPage checkboxInput mainPanel observeEvent radioButtons shinyApp sidebarLayout sidebarPanel selectInput tags textOutput titlePanel uiOutput
 #' @importFrom shinyauthr loginServer logoutServer
 #' @importFrom shinyjs disable enable
 #' @importFrom stringr str_detect
@@ -60,7 +60,7 @@ launchServer <- function (data, config = list(), test_subset = NA) {
   }
 
   config <- getConfig(config)
-  ui <- getUI(config)
+  ui <- getUI(data, config)
 
   # Run the application
   server <- getServer(data, config)
@@ -79,13 +79,7 @@ mapLabel <- function (label) {
   return(label)
 }
 
-initialSelectedSpecies <- function (label_list, initial_num_species = 3, show_all_if_under = 8) {
-  if (length(label_list) < show_all_if_under) {
-    seq_along(label_list)
-  } else {
-    sample(seq_along(label_list), min(initial_num_species, length(values)))
-  }
-}
+
 
 
 

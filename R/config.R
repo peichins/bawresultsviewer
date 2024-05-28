@@ -25,6 +25,8 @@ default_config <- list(
   # take a random subset of this size if the number of points exceeds it
   max_scatter_points = 2000,
 
+  max_table_rows = 50000,
+
   auth = FALSE
 )
 

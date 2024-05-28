@@ -8,46 +8,6 @@ getServer <- function(data, config) {
     output$is_authorized <- reactive({ auth_info$is_authorized() })
     outputOptions(output, "is_authorized", suspendWhenHidden = FALSE)
 
-    unique_labels <- sort(as.character(unique(data$label)))
-    unique_sites <- sort(as.character(unique(data$site)))
-
-    output$modeRadio <- renderUI({
-      radioButtons("mode", "Mode:", choices = c("Counts" = "counts", "Scatter" = "scatter"), selected = "counts", inline = TRUE)
-    })
-
-    output$siteSelector <- renderUI({
-      site_list <- as.list(unique_sites)
-      names(site_list) <- unique_sites
-      selectInput("siteInput", "Select Sites (if none will include all):", choices = site_list, selected = list(), multiple = TRUE)
-    })
-
-    output$speciesSelector <- renderUI({
-      label_list <- as.list(unique_labels)
-      names(label_list) <- mapLabel(unique_labels)
-      selected_species <- initialSelectedSpecies(unique_labels)
-      selectInput("speciesInput", "Select Species:", choices = label_list, selected = label_list[selected_species], multiple = TRUE)
-    })
-
-    output$scoreSlider <- renderUI({
-      min_score <- min(data$score, na.rm = TRUE)
-      max_score <- max(data$score, na.rm = TRUE)
-      sliderInput("scoreInput", "Score Range:",
-                  min = min_score,
-                  max = max_score,
-                  value = c(min_score, max_score))
-    })
-
-    output$dateRangePicker <- renderUI({
-      min_date <- min(data$timestamp, na.rm = TRUE)
-      max_date <- max(data$timestamp, na.rm = TRUE)
-
-      dateRangeInput("dateInput", "Select Date Range:",
-                     start = min_date,
-                     end = max_date,
-                     min = min_date,
-                     max = max_date)
-    })
-
     observeEvent(input$mode, {
       if (input$mode == "counts") {
         shinyjs::disable("onlyHighestCheckbox")
@@ -56,6 +16,10 @@ getServer <- function(data, config) {
       }
     })
 
+    default_score_selection <- getDefaultScoreSelection(data)
+    observeEvent(input$resetSlider, {
+      updateSliderInput(session, "scoreInput", value = default_score_selection)
+    })
 
     point_clicked <- reactiveVal(FALSE)
     observeEvent(event_data("plotly_click", source = "plotSource"), {
@@ -109,26 +73,20 @@ getServer <- function(data, config) {
     })
 
     aggregated_data <- reactive({
-
       df <- req(filtered_data())
-
       modified_data <- getCounts(df, input$intervalInput, input$speciesInput)
-
       putMessage(paste(
         'Aggregated into', length(unique(modified_data$timestamp)),
         paste0('one-', input$intervalInput), 'time intervals'
       ))
-
       modified_data
-
     })
-
-
 
 
     output$timeSeriesPlot <- renderPlotly({
 
-      plot_type <- input$mode
+      plot_type <- req(input$mode)
+
       if(plot_type == 'counts') {
         df <- req(aggregated_data())
         p <- getDetectionCountPlot(df, input, output)

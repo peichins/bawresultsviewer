@@ -8,11 +8,18 @@ getDetailsTable <- function (data, config, output, point_clicked) {
     }
   })
 
+  head(data)
+
   if (point_clicked()) {
     # Retrieve rows based on row IDs stored in customdata of the clicked point
     row_ids <- unlist(click_data$customdata)
     data <- data %>%
       dplyr::filter(row_id %in% row_ids)
+  }
+
+  if (nrow(data) > config$max_table_rows) {
+    #putMessage("Too many rows for table")
+    return(datatable(data.frame(), options = list(pageLength = 5)))
   }
 
   dt_options <- list(
