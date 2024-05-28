@@ -35,7 +35,7 @@ getUI <- function (data, config) {
           condition = "output.is_authorized",
           radioButtons("mode", "Mode:", choices = c("Counts" = "counts", "Scatter" = "scatter"), selected = "counts", inline = TRUE),
           checkboxInput("onlyHighestCheckbox", "Show only higest scoring", value = FALSE),
-          tagList(
+          shiny::tagList(
               tags$label("Score Range:"),
               tags$a("reset", href = "#", onclick = "Shiny.onInputChange('resetSlider', Math.random())"),
               sliderInput("scoreInput", label = NULL, min = min_score, max = max_score, value = default_score_selection)

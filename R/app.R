@@ -35,7 +35,7 @@ library(DT)
 #' @importFrom lubridate days floor_date ymd_hms
 #' @importFrom magrittr %>%
 #' @importFrom plotly add_trace event_data layout plot_ly plotlyOutput renderPlotly event_register
-#' @importFrom shiny actionButton conditionalPanel div fluidPage checkboxInput mainPanel observeEvent radioButtons shinyApp sidebarLayout sidebarPanel selectInput tags textOutput titlePanel uiOutput
+#' @importFrom shiny actionButton conditionalPanel div fluidPage checkboxInput mainPanel observeEvent radioButtons shinyApp sidebarLayout sidebarPanel selectInput tags tagList textOutput titlePanel uiOutput
 #' @importFrom shinyauthr loginServer logoutServer
 #' @importFrom shinyjs disable enable
 #' @importFrom stringr str_detect
