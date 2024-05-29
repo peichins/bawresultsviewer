@@ -13,8 +13,11 @@ library(DT)
 #'
 #' This function launches a Shiny server to serve the Bird Audio Window results viewer.
 #'
-#' @param data_path A string specifying the path to the RDS file containing the classification results data.
+#' @param data A data.frame or tibble, or a string specifying the path to the RDS file,
+#'             containing the classification results data.
 #' @param config A list containing configuration options for the Shiny app (e.g., API and web host URLs, recording duration).
+#' @param test_subset A numeric value between 0 and 1 specifying the proportion of the data to use for testing purposes.
+#'                    Default is NA, meaning all data will be used.
 #'
 #' @return A Shiny application object.
 #'
@@ -30,7 +33,7 @@ library(DT)
 #' launchServer(data_path, config)
 #' }
 #'
-#' @importFrom dplyr anti_join arrange bind_rows distinct filter group_by left_join mutate row_number select summarise slice_max slice_sample ungroup
+#' @importFrom dplyr anti_join arrange bind_rows distinct filter group_by left_join mutate row_number select summarise slice_max slice_sample tibble ungroup
 #' @importFrom DT DTOutput JS renderDT datatable
 #' @importFrom lubridate days floor_date ymd_hms
 #' @importFrom magrittr %>%
@@ -56,7 +59,7 @@ launchServer <- function (data, config = list(), test_subset = NA) {
   if (!is.na(test_subset)) {
 
     num = round(nrow(data) * test_subset)
-    data <- data %>% slice_sample(n = num)
+    data <- data %>% dplyr::slice_sample(n = num)
   }
 
   config <- getConfig(config)
@@ -65,7 +68,7 @@ launchServer <- function (data, config = list(), test_subset = NA) {
   # Run the application
   server <- getServer(data, config)
 
-  shinyApp(ui = ui, server = server)
+  shiny::shinyApp(ui = ui, server = server)
 
 }
 

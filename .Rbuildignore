@@ -1,9 +1,11 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^README\.Rmd$
+^README\.md$
 ^LICENSE\.md$
 ^cran-comments\.md$
 ^data-raw$
 ^pkgdown$
 ^_pkgdown\.yml$
 ^\.github$
+^examples$

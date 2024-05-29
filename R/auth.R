@@ -57,7 +57,7 @@ authServer <- function(input, output, session, config) {
 #' @export
 addUsers <- function(file, usernames, passwords, permissions = "standard", names = usernames) {
   # Create a tibble with the new user data
-  user_base <- tibble::tibble(
+  user_base <- dplyr::tibble(
     user = usernames,
     password = as.character(sapply(passwords, sodium::password_store)),
     permission = permissions,

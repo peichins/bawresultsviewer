@@ -7,9 +7,13 @@
 launchServer(data, config = list(), test_subset = NA)
 }
 \arguments{
+\item{data}{A data.frame or tibble, or a string specifying the path to the RDS file,
+containing the classification results data.}
+
 \item{config}{A list containing configuration options for the Shiny app (e.g., API and web host URLs, recording duration).}
 
-\item{data_path}{A string specifying the path to the RDS file containing the classification results data.}
+\item{test_subset}{A numeric value between 0 and 1 specifying the proportion of the data to use for testing purposes.
+Default is NA, meaning all data will be used.}
 }
 \value{
 A Shiny application object.
