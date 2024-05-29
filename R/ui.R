@@ -22,8 +22,13 @@ getUI <- function (data, config) {
     )
   }
 
+
+
   shiny::fluidPage(
     shinyjs::useShinyjs(),
+    shiny::tags$head(
+      shiny::includeScript(system.file("www/js/table_callbacks.js", package = "bawresultsviewer"))
+    ),
     shiny::titlePanel(config$title),
     shiny::sidebarLayout(
       shiny::sidebarPanel(
@@ -50,7 +55,9 @@ getUI <- function (data, config) {
                              choices = c("1 hour" = "hour", "1 day" = "day", "1 week" = "week", "1 month" = "month"),
                              selected = "day"),
           shiny::textOutput("messageBox"),
-          shiny::uiOutput("resetTableButton")
+          shiny::uiOutput("resetTableButton"),
+          # text input to specify user_token for download link
+          shiny::textInput("user_token", "Enter user token")
         )
       ),
       shiny::mainPanel(

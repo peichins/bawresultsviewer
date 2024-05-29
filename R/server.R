@@ -100,7 +100,7 @@ getServer <- function(data, config) {
 
     output$detailsTable <- DT::renderDT({
       df <- shiny::req(filtered_data())
-      getDetailsTable(df, config, output, point_clicked)
+      getDetailsTable(df, config, input, output, point_clicked)
     })
   }
 }

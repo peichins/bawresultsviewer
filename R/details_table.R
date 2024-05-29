@@ -1,4 +1,4 @@
-getDetailsTable <- function (data, config, output, point_clicked) {
+getDetailsTable <- function (data, config, input, output, point_clicked) {
 
   click_data <- event_data("plotly_click", source = "plotSource")
 
@@ -22,23 +22,28 @@ getDetailsTable <- function (data, config, output, point_clicked) {
     return(datatable(data.frame(), options = list(pageLength = 5)))
   }
 
+  fixed_params <- jsonlite::toJSON(list(
+    web_host = config$web_host,
+    api_host = config$api_host,
+    clip_duration = config$clip_duration,
+    clip_duration = config$recording_duration
+  ), auto_unbox = TRUE)
+
+  print(fixed_params)
+
+  rownums <- jsonlite::toJSON(list(
+    listen = 5, download = 6, arid = 7, offset_seconds = 8
+  ))
+
   dt_options <- list(
     pageLength = 5,
     escape = FALSE,
-    rowCallback = JS(
-      "function(row, data, index, rowId) {",
-      "  var arid = data[7];",
-      "  var offset_seconds = data[8];",
-      sprintf("  var web_host = '%s';", config$web_host),
-      sprintf("  var api_host = '%s';", config$api_host),
-      sprintf("  var clip_duration = '%s';", config$clip_duration_seconds),
-      sprintf("  var recording_duration = '%s';", config$recording_duration_seconds),
-      "  var listen_link = `<a href='https://${web_host}/listen/${arid}?start=${Math.max(0, offset_seconds - 1)}&end=${Math.min(recording_duration, offset_seconds + 1 + clip_duration)}' target='_blank'>Listen</a>`;",
-      "  var download_link = `<a href='https://${api_host}/audio_recordings/${arid}/media.wav?start_offset=${offset_seconds}&end_offset=${offset_seconds + clip_duration}' target='_blank'>Download</a>`;",
-      "  $('td:eq(5)', row).html(listen_link);",
-      "  $('td:eq(6)', row).html(download_link);",
-      "}"
-    ),
+    rowCallback = JS(paste("
+    function(row, data, index, rowId) {
+        var fixed_params = ", fixed_params, ";
+        var rownums = ", rownums, ";
+        updateRow(row, data, index, fixed_params, rownums);
+        }")),
     columnDefs = list(list(visible=FALSE, targets=c(7, 8)))
   )
 
@@ -52,6 +57,6 @@ getDetailsTable <- function (data, config, output, point_clicked) {
     # this order must match the rowCallbackJavascript
     select(species, site, date, score, listen, download, arid, offset_seconds)
 
-  dt <- datatable(data, options = dt_options, escape = FALSE)
+  dt <- DT::datatable(data, options = dt_options, escape = FALSE)
   return(dt)
 }

@@ -35,10 +35,11 @@ library(DT)
 #'
 #' @importFrom dplyr anti_join arrange bind_rows distinct filter group_by left_join mutate row_number select summarise slice_max slice_sample tibble ungroup
 #' @importFrom DT DTOutput JS renderDT datatable
+#' @importFrom jsonlite toJSON
 #' @importFrom lubridate days floor_date ymd_hms
 #' @importFrom magrittr %>%
 #' @importFrom plotly add_trace event_data layout plot_ly plotlyOutput renderPlotly event_register
-#' @importFrom shiny actionButton conditionalPanel div fluidPage checkboxInput mainPanel observeEvent radioButtons shinyApp sidebarLayout sidebarPanel selectInput tags tagList textOutput titlePanel uiOutput
+#' @importFrom shiny actionButton conditionalPanel div fluidPage checkboxInput includeScript mainPanel observeEvent radioButtons shinyApp sidebarLayout sidebarPanel selectInput tags tagList textOutput titlePanel uiOutput
 #' @importFrom shinyauthr loginServer logoutServer
 #' @importFrom shinyjs disable enable
 #' @importFrom stringr str_detect
