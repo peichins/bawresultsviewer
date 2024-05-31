@@ -83,8 +83,7 @@ initialSelectedSpecies <- function (label_list, initial_num_species = 3, show_al
 
 getDefaultScoreSelection <- function (data) {
   # determine input values from data. These are static and will not change
-  min_score <- min(data$score, na.rm = TRUE)
-  max_score <- max(data$score, na.rm = TRUE)
-  default_score_selection <- c(max(0, min_score), max_score)
+  range <- getRange(data, 'score')
+  default_score_selection <- c(max(0, range$min), range$max)
   return(default_score_selection)
 }

@@ -35,6 +35,7 @@ library(DT)
 #'
 #' @importFrom dplyr anti_join arrange bind_rows distinct filter group_by left_join mutate row_number select summarise slice_max slice_sample tibble ungroup
 #' @importFrom DT DTOutput JS renderDT datatable
+#' @importFrom glue glue
 #' @importFrom jsonlite toJSON
 #' @importFrom lubridate days floor_date ymd_hms
 #' @importFrom magrittr %>%
@@ -54,11 +55,25 @@ launchServer <- function (data, config = list(), test_subset = NA) {
 
 
   if (is.character(data)) {
-    data <- readRDS(data)
+
+    #read data from csv or rds or open a database connection, depending on the file extension
+    # using a switch statement
+    switch(
+      tolower(tools::file_ext(data)),
+      "csv" = {
+        data <- readr::read_csv(data)
+      },
+      "rds" = {
+        data <- readRDS(data)
+      },
+      "sqlite" = {
+        data <- db(data)
+      },
+      stop("Unsupported file type")
+    )
   }
 
-  if (!is.na(test_subset)) {
-
+  if (!is.na(test_subset) && is.data.frame(data)) {
     num = round(nrow(data) * test_subset)
     data <- data %>% dplyr::slice_sample(n = num)
   }

@@ -40,31 +40,18 @@ getServer <- function(data, config) {
     filtered_data <- shiny::reactive({
       shiny::req(input$speciesInput, input$scoreInput)
 
-      modified_data <- data %>%
-        dplyr::filter(
-          label %in% input$speciesInput,
-          score >= input$scoreInput[1],
-          score <= input$scoreInput[2],
-          timestamp >= input$dateInput[1],
-          timestamp <= input$dateInput[2] + lubridate::days(1),
-          if (!is.null(input$siteInput) && length(input$siteInput) > 0) site %in% input$siteInput else TRUE
-        )
+      selected_data <- selectData(data, input)
 
-      putMessage(paste(nrow(modified_data), 'of', nrow(data), 'fit critera'), TRUE)
+      putMessage(paste(nrow(selected_data), 'of', nrow(data), 'fit critera'), TRUE)
 
       if (input$mode == "scatter" && input$onlyHighestCheckbox) {
         # Filter for top scoring row per species per interval per site
-        modified_data <- modified_data %>%
-          dplyr::mutate(interval = lubridate::floor_date(timestamp, unit = input$intervalInput)) %>%
-          dplyr::group_by(interval, label, site) %>%
-          dplyr::slice_max(score, n = 1, with_ties = FALSE) %>%
-          dplyr::ungroup() %>%
-          dplyr::select(-interval)
 
-        putMessage(paste('Of these, showing only the highest scoring per', input$intervalInput, 'per site, per class', paste0('(',nrow(modified_data),' points)')))
+        putMessage(paste('Of these, showing only the highest scoring per', input$intervalInput, 'per site, per class', paste0('(',nrow(selected_data),' points)')))
+        selected_data <- selectTopScoringTibble(selected_data, input)
       }
 
-      modified_data %>%
+      selected_data %>%
         dplyr::mutate(row_id = dplyr::row_number()) %>%
         dplyr::arrange(timestamp, label)
     })

@@ -18,34 +18,54 @@
 #' @importFrom stats setNames
 #' @export
 getCounts <- function (data, interval, labels=NULL) {
+  data <- getCountsNoZeros(data, interval)
+  data <- fillZeros(data, interval, labels)
+  return(data)
+}
 
-  modified_data <- data %>%
+getCountsNoZeros <- function (data, interval) {
+
+  data <- data %>%
     dplyr::mutate(interval = lubridate::floor_date(timestamp, unit = interval)) %>%
     dplyr::group_by(interval, label) %>%
     dplyr::summarise(count = dplyr::n(), .groups = 'drop', row_ids = list(row_id)) %>%
     droplevels() %>%
     dplyr::rename(timestamp = interval)
 
+  return(data)
+
+}
+
+
+
+fillZeros <- function (data, interval, labels=NULL) {
+
+
   if (is.null(labels)) {
-    labels <- unique(modified_data$label)
+    labels <- unique(data$label)
   }
 
+  # create a tibble with all possible combinations of timestamps and labels
   all_period_timestamps <- tidyr::crossing(
     timestamp = seq.POSIXt(
-      from = min(modified_data$timestamp),
-      to = max(modified_data$timestamp),
+      from = min(data$timestamp),
+      to = max(data$timestamp),
       by = interval
     ),
     label = labels
   )
 
-  completed_data <- all_period_timestamps %>%
-    dplyr::left_join(modified_data, by = c("timestamp", "label")) %>%
+  # left join on the data to fill counts where there are some
+  # then replace missing with zeros
+  data <- all_period_timestamps %>%
+    dplyr::left_join(data, by = c("timestamp", "label")) %>%
     dplyr::mutate(
       count = tidyr::replace_na(count, 0),
       row_ids = tidyr::replace_na(row_ids, list(integer(0)))
     )
 
-  return(completed_data)
+  return(data)
 
 }
+
+
