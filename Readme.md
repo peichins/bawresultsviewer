@@ -26,7 +26,7 @@ a path to an rds file. The table must contain these columns:
 - label
 - score
 - timestamp
-- offset
+- offset_seconds
 - arid
 
 

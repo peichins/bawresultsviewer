@@ -57,6 +57,8 @@ launchServer <- function (data, config = list(), test_subset = NA) {
     data <- readRDS(data)
   }
 
+  checkCols(data)
+
   if (!is.na(test_subset)) {
 
     num = round(nrow(data) * test_subset)
@@ -74,7 +76,29 @@ launchServer <- function (data, config = list(), test_subset = NA) {
 }
 
 
+checkCols <- function(data) {
 
+  msg <- "
+  site: factor, str or int
+  label: factor or str
+  score: numeric
+  timestamp: POSIXct
+  offset_seconds: int
+  arid: int
+  "
+
+  construct_msg <- function(cols) {
+    cols_str <- paste(cols, collapse = ", ")
+    return(paste(col, "are missing. Required columns are:", msg))
+  }
+
+  required_cols <- c("site", "label", "score", "timestamp", "offset_seconds", "arid")
+
+  if (any(intersect(required_cols, colnames(data)) != required_cols)) {
+    stop(construct_msg(required_cols))
+  }
+
+}
 
 
 
