@@ -7,6 +7,8 @@ default_config <- list(
   # where the listen link points to
   web_host = "data.acousticobservatory.org",
 
+  baw_instance = 'a2o',
+
   # used to stop padding going past end of recording.
   # If unknown leave as a really high number and occasionally the link will error
   # todo: ideally we will have access to durations of all audio, so we can also normalize counts by recording coverage
@@ -30,6 +32,18 @@ default_config <- list(
   auth = FALSE
 )
 
+
+baw_instances <- list(
+  a2o = list(
+    api_host = "api.acousticobservatory.org",
+    web_host = "data.acousticobservatory.org"
+  ),
+  ecosounds = list(
+    api_host = "api.ecosounds.org",
+    web_host = "www.ecosounds.org"
+  )
+)
+
 preprocessConfig <- function (config) {
 
   if (is.character(config$auth)) {
@@ -38,6 +52,20 @@ preprocessConfig <- function (config) {
     config$require_auth <- FALSE
   } else {
     stop("Invalid value for config$auth. It should be a filepath to an RDS file or FALSE.")
+  }
+
+  # config is a flat list, and baw config values are part of the flat list
+  # if a baw_instance is specified, then we look for the corresponding config values in the baw instance list and
+  # then merge them into the flat config list. If api_host or web_host are specified in the flat config list, they
+  # will be overwritten by the values in the baw instance list.
+  if (is.character(config$baw_instance)) {
+    if (config$baw_instance %in% names(baw_instances)) {
+      config <- modifyList(config, baw_instances[[config$baw_instance]])
+    } else {
+      stop("Invalid value for config$baw_instance. It should be one of ", paste(names(baw_instances), collapse = ", "))
+    }
+  } else {
+    stop("Invalid value for config$baw_instance. It should be a string and one of ", paste(names(baw_instances), collapse = ", "))
   }
 
   return(config)
